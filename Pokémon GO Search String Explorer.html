@@ -1,0 +1,1771 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pokémon GO Search String Explorer & Custom Builder</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            pogo: {
+              bg: '#0b1120',
+              card: '#131d31',
+              cardHover: '#1a2742',
+              border: '#233252',
+              teal: '#2dd4bf',
+              cyan: '#38bdf8',
+              gold: '#fbbf24',
+              pink: '#f43f5e',
+              purple: '#a855f7'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom Scrollbars & POGO-inspired UI accents */
+    body {
+      background-color: #0b1120;
+      background-image: 
+        radial-gradient(at 15% 10%, rgba(45, 212, 191, 0.08) 0px, transparent 45%),
+        radial-gradient(at 85% 15%, rgba(56, 189, 248, 0.08) 0px, transparent 45%),
+        radial-gradient(at 50% 90%, rgba(168, 85, 247, 0.05) 0px, transparent 50%);
+      background-attachment: fixed;
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0b1120;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #233252;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #38bdf8;
+    }
+
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    .pogo-gradient-btn {
+      background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+    }
+    .pogo-gradient-btn:hover {
+      background: linear-gradient(135deg, #059669 0%, #0891b2 100%);
+    }
+
+    @keyframes pulse-border {
+      0%, 100% { border-color: rgba(244, 63, 94, 0.8); }
+      50% { border-color: rgba(244, 63, 94, 0.3); }
+    }
+    .negate-active-ring {
+      animation: pulse-border 1.6s infinite;
+    }
+  </style>
+</head>
+<body class="text-slate-100 font-sans antialiased min-h-screen flex flex-col selection:bg-cyan-500 selection:text-slate-950">
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Top Header -->
+  <header class="border-b border-pogo-border/80 bg-pogo-bg/90 backdrop-blur-md z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <!-- Custom SVG Pokéball / Search Emblem -->
+        <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-teal-400 via-cyan-500 to-blue-600 p-0.5 shadow-lg shadow-cyan-500/20 flex-shrink-0">
+          <div class="w-full h-full bg-pogo-bg rounded-[14px] flex items-center justify-center relative overflow-hidden">
+            <svg class="w-6 h-6 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <circle cx="12" cy="12" r="9" />
+              <line x1="3" y1="12" x2="9" y2="12" />
+              <line x1="15" y1="12" x2="21" y2="12" />
+              <circle cx="12" cy="12" r="3" fill="currentColor" fill-opacity="0.25" />
+            </svg>
+          </div>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg sm:text-xl font-extrabold tracking-tight bg-gradient-to-r from-white via-cyan-100 to-teal-300 bg-clip-text text-transparent">
+              PoGO Search String Explorer
+            </h1>
+            <span class="text-[11px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 font-semibold">
+              Pro Builder
+            </span>
+          </div>
+          <p class="text-xs sm:text-sm text-slate-400">
+            Click any search code below to assemble custom filters, or save &amp; export your storage presets.
+          </p>
+        </div>
+      </div>
+
+      <!-- Header Quick Actions -->
+      <div class="flex items-center gap-2 self-end sm:self-auto">
+        <button onclick="toggleSavedDrawer()" id="savedStringsHeaderBtn" class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-pogo-card hover:bg-pogo-cardHover border border-pogo-border text-xs sm:text-sm font-medium text-slate-200 transition shadow-sm">
+          <i class="ph-fill ph-bookmarks text-amber-400 text-base"></i>
+          <span>My Saved Strings</span>
+          <span id="savedCountBadge" class="px-1.5 py-0.2 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full text-xs font-mono">0</span>
+        </button>
+        <button onclick="openImportExportModal()" class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-pogo-card hover:bg-pogo-cardHover border border-pogo-border text-xs sm:text-sm font-medium text-slate-300 hover:text-white transition" title="Export or Import Saved Strings">
+          <i class="ph ph-arrows-left-right text-cyan-400 text-base"></i>
+          <span class="hidden md:inline">Backup / Export</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Sticky Live Custom String Builder Panel -->
+  <section class="sticky top-0 z-20 bg-pogo-bg/95 backdrop-blur-xl border-b border-pogo-border shadow-2xl shadow-black/40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
+      
+      <!-- Builder Top Row: Input Bar & Main Action Buttons -->
+      <div class="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center">
+        
+        <!-- Active Query Input Box -->
+        <div class="relative flex-grow flex items-center">
+          <div class="absolute left-3.5 flex items-center gap-1.5 pointer-events-none text-cyan-400">
+            <i class="ph-bold ph-terminal-window text-lg"></i>
+          </div>
+          <input
+            id="builderInput"
+            type="text"
+            placeholder="Click cards below or type a custom search string (e.g. 4*&shiny,lucky)..."
+            class="w-full pl-10 pr-24 py-3 bg-slate-950/90 border-2 border-pogo-border focus:border-cyan-400 rounded-2xl font-mono text-sm sm:text-base text-cyan-200 placeholder-slate-500 focus:outline-none transition shadow-inner"
+            oninput="updateBuilderStats()"
+          />
+          <div class="absolute right-2.5 flex items-center gap-1">
+            <button
+              onclick="undoBuilderStep()"
+              id="undoBtn"
+              title="Undo last change"
+              class="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition disabled:opacity-30 disabled:pointer-events-none"
+              disabled
+            >
+              <i class="ph-bold ph-arrow-arc-left text-base"></i>
+            </button>
+            <button
+              onclick="clearBuilder()"
+              id="clearBtn"
+              title="Clear string"
+              class="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition"
+            >
+              <i class="ph-bold ph-x-circle text-base"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Primary Action Buttons -->
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <button
+            onclick="copyActiveBuilderString()"
+            class="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-3 rounded-2xl pogo-gradient-btn text-slate-950 font-bold text-sm shadow-lg shadow-teal-500/20 active:scale-[0.98] transition"
+          >
+            <i class="ph-bold ph-copy text-lg"></i>
+            <span>Copy String</span>
+          </button>
+
+          <button
+            onclick="openSaveStringModal()"
+            class="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 font-semibold text-sm active:scale-[0.98] transition"
+          >
+            <i class="ph-fill ph-bookmark-simple text-lg"></i>
+            <span>Save to My Strings</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Builder Controls Row: Join Mode, Negate Toggle & Quick Operator Insert -->
+      <div class="mt-2.5 flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800/80 text-xs">
+        
+        <!-- Left Controls: Auto-Join Mode + Negate Next Toggle -->
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- Join Mode Selector -->
+          <div class="flex items-center bg-slate-900/90 border border-pogo-border rounded-xl p-0.5">
+            <span class="px-2.5 py-1 text-slate-400 font-medium hidden sm:inline">Card Click Join:</span>
+            <button
+              id="joinAndBtn"
+              onclick="setJoinMode('&')"
+              class="px-2.5 py-1 rounded-lg font-mono font-semibold transition bg-cyan-500/20 text-cyan-300 border border-cyan-500/40"
+              title="Automatically join clicked cards with & (AND)"
+            >
+              &amp; (AND)
+            </button>
+            <button
+              id="joinOrBtn"
+              onclick="setJoinMode(',')"
+              class="px-2.5 py-1 rounded-lg font-mono font-semibold transition text-slate-400 hover:text-slate-200"
+              title="Automatically join clicked cards with , (OR)"
+            >
+              , (OR)
+            </button>
+          </div>
+
+          <!-- Negate Next (!) Toggle -->
+          <button
+            id="negateNextBtn"
+            onclick="toggleNegateNext()"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-pogo-border text-slate-300 hover:text-white font-medium transition"
+            title="When active, clicking any card prefixes it with ! (NOT)"
+          >
+            <span class="font-mono font-bold text-rose-400">!</span>
+            <span>Negate Next:</span>
+            <span id="negateStatusText" class="font-mono text-[11px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">OFF</span>
+          </button>
+        </div>
+
+        <!-- Right Controls: Direct Operator Insert Buttons -->
+        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+          <span class="text-slate-400 mr-1 hidden md:inline">Insert Symbol:</span>
+          <button onclick="insertRawOperator('&')" class="px-2.5 py-1 rounded-lg bg-pogo-card hover:bg-pogo-cardHover border border-pogo-border font-mono font-bold text-cyan-300 transition" title="Insert & (AND)">&amp; <span class="font-sans font-normal text-[11px] text-slate-400">AND</span></button>
+          <button onclick="insertRawOperator(',')" class="px-2.5 py-1 rounded-lg bg-pogo-card hover:bg-pogo-cardHover border border-pogo-border font-mono font-bold text-amber-300 transition" title="Insert , (OR)">, <span class="font-sans font-normal text-[11px] text-slate-400">OR</span></button>
+          <button onclick="insertRawOperator('!')" class="px-2.5 py-1 rounded-lg bg-pogo-card hover:bg-pogo-cardHover border border-pogo-border font-mono font-bold text-rose-400 transition" title="Insert ! (NOT)">! <span class="font-sans font-normal text-[11px] text-slate-400">NOT</span></button>
+          <button onclick="insertRawOperator('+')" class="px-2.5 py-1 rounded-lg bg-pogo-card hover:bg-pogo-cardHover border border-pogo-border font-mono font-bold text-emerald-300 transition" title="Insert + (Evolution Family)">+ <span class="font-sans font-normal text-[11px] text-slate-400">Fam</span></button>
+          <button onclick="insertRawOperator('-')" class="px-2.5 py-1 rounded-lg bg-pogo-card hover:bg-pogo-cardHover border border-pogo-border font-mono font-bold text-purple-300 transition" title="Insert - (Range)">- <span class="font-sans font-normal text-[11px] text-slate-400">Range</span></button>
+          <button onclick="insertRawOperator('#')" class="px-2.5 py-1 rounded-lg bg-pogo-card hover:bg-pogo-cardHover border border-pogo-border font-mono font-bold text-pink-300 transition" title="Insert # (Tag)"># <span class="font-sans font-normal text-[11px] text-slate-400">Tag</span></button>
+          <button onclick="insertRawOperator('@')" class="px-2.5 py-1 rounded-lg bg-pogo-card hover:bg-pogo-cardHover border border-pogo-border font-mono font-bold text-sky-300 transition" title="Insert @ (Move)">@ <span class="font-sans font-normal text-[11px] text-slate-400">Move</span></button>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Workspace Container -->
+  <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow flex flex-col gap-6">
+
+    <!-- Collapsible "My Saved Strings" Manager Section -->
+    <section id="savedStringsSection" class="bg-pogo-card/90 border border-amber-500/30 rounded-3xl p-4 sm:p-6 shadow-xl transition-all">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-pogo-border">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
+            <i class="ph-fill ph-bookmarks text-xl"></i>
+          </div>
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+              My Saved Search Strings
+              <span class="text-xs font-normal text-slate-400">(Saved in Browser Storage)</span>
+            </h2>
+            <p class="text-xs text-slate-400">
+              One-click copy for Pokémon GO, or load any preset into the builder above to customize it.
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 self-end sm:self-auto">
+          <button onclick="resetDefaultSavedStrings()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 font-medium transition" title="Restore default essential presets">
+            <i class="ph ph-arrow-counter-clockwise mr-1"></i>Restore Defaults
+          </button>
+          <button onclick="openImportExportModal()" class="px-3 py-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-xs text-cyan-300 font-medium transition">
+            <i class="ph ph-download-simple mr-1"></i>Export / Import
+          </button>
+          <button onclick="toggleSavedDrawer()" class="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition" title="Collapse section">
+            <i class="ph-bold ph-caret-up text-sm"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Saved Strings Grid -->
+      <div id="savedStringsGrid" class="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+        <!-- Populated by JS -->
+      </div>
+    </section>
+
+    <!-- Directory Filter Controls: Search Bar + Category Pills -->
+    <section class="flex flex-col gap-4">
+      <div class="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+        <!-- Instant Keyword Search Input -->
+        <div class="relative flex-grow max-w-2xl">
+          <i class="ph ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+          <input
+            id="directorySearchInput"
+            type="text"
+            placeholder="Search codes, meanings, or examples (e.g., hundo, trade, candy, @special, buddy, xxl)..."
+            class="w-full pl-11 pr-10 py-3 bg-pogo-card border border-pogo-border focus:border-cyan-400 rounded-2xl text-sm text-white placeholder-slate-400 focus:outline-none transition shadow-sm"
+            oninput="renderDirectory()"
+          />
+          <button
+            id="clearSearchBtn"
+            onclick="clearDirectorySearch()"
+            class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1"
+          >
+            <i class="ph-fill ph-x-circle text-lg"></i>
+          </button>
+        </div>
+
+        <!-- Results Counter & Parser Priority Tip -->
+        <div class="flex items-center justify-between md:justify-end gap-3 text-xs text-slate-400">
+          <div class="hidden xl:flex items-center gap-1.5 px-3 py-2 rounded-xl bg-pogo-card/70 border border-pogo-border">
+            <i class="ph-fill ph-lightbulb text-amber-400 text-sm"></i>
+            <span>Pro Tip: In PoGO, <code class="text-amber-300 font-mono">, (OR)</code> is evaluated before <code class="text-cyan-300 font-mono">&amp; (AND)</code></span>
+          </div>
+          <div class="font-mono bg-pogo-card px-3 py-2 rounded-xl border border-pogo-border text-slate-300">
+            Showing <span id="visibleCount" class="text-cyan-400 font-bold">0</span> codes
+          </div>
+        </div>
+      </div>
+
+      <!-- Category Filter Pills -->
+      <div id="categoryTabs" class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+        <!-- Populated by JS -->
+      </div>
+    </section>
+
+    <!-- Search Code Cards Grid -->
+    <section>
+      <div id="directoryGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
+        <!-- Populated by JS -->
+      </div>
+
+      <!-- Empty State -->
+      <div id="emptyDirectoryState" class="hidden py-16 text-center bg-pogo-card/40 border border-dashed border-pogo-border rounded-3xl">
+        <i class="ph ph-binoculars text-5xl text-slate-500 mb-3 inline-block"></i>
+        <h3 class="text-lg font-bold text-slate-200">No matching Pokémon GO search codes</h3>
+        <p class="text-sm text-slate-400 mt-1 max-w-md mx-auto">
+          Try clearing your search filter or switching to the "All" category tab.
+        </p>
+        <button onclick="resetDirectoryFilters()" class="mt-4 px-4 py-2 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-xs font-semibold hover:bg-cyan-500/30 transition">
+          Reset Filters
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-pogo-border/60 bg-pogo-bg/80 py-6 mt-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-teal-400"></span>
+        <span>Pokémon GO Search String Explorer &bull; Works offline &bull; Custom strings auto-saved in localStorage</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <button onclick="downloadStandaloneApp()" class="text-cyan-400 hover:text-cyan-300 font-medium flex items-center gap-1 transition">
+          <i class="ph-bold ph-file-html"></i>
+          <span>Download Standalone HTML App</span>
+        </button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- MODAL 1: Save Custom String Modal -->
+  <div id="saveModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+    <div class="bg-pogo-card border border-pogo-border rounded-3xl max-w-lg w-full p-6 shadow-2xl animate-fade-in">
+      <div class="flex items-center justify-between pb-3 border-b border-pogo-border">
+        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+          <i class="ph-fill ph-bookmark-simple text-amber-400"></i>
+          <span>Save Custom Search String</span>
+        </h3>
+        <button onclick="closeSaveStringModal()" class="text-slate-400 hover:text-white p-1">
+          <i class="ph-bold ph-x text-lg"></i>
+        </button>
+      </div>
+
+      <div class="mt-4 space-y-4">
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Preset Title / Label</label>
+          <input
+            id="saveTitleInput"
+            type="text"
+            placeholder="e.g., Community Day Quick Transfer"
+            class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-pogo-border focus:border-cyan-400 text-sm text-white focus:outline-none"
+          />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Category Tag</label>
+          <select
+            id="saveTagInput"
+            class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-pogo-border focus:border-cyan-400 text-sm text-white focus:outline-none"
+          >
+            <option value="Storage Cleanup">Storage Cleanup</option>
+            <option value="PvP & GBL">PvP & GBL</option>
+            <option value="Trading & XL">Trading & XL</option>
+            <option value="Raids & Max">Raids & Max</option>
+            <option value="Collection & Daily">Collection & Daily</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Search String</label>
+          <textarea
+            id="saveQueryInput"
+            rows="3"
+            class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-pogo-border focus:border-cyan-400 font-mono text-xs sm:text-sm text-cyan-300 focus:outline-none"
+          ></textarea>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Notes / Description (Optional)</label>
+          <input
+            id="saveDescInput"
+            type="text"
+            placeholder="What does this filter include or exclude?"
+            class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-pogo-border focus:border-cyan-400 text-sm text-white focus:outline-none"
+          />
+        </div>
+      </div>
+
+      <div class="mt-6 flex items-center justify-end gap-2.5">
+        <button onclick="closeSaveStringModal()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs sm:text-sm font-medium text-slate-300 transition">
+          Cancel
+        </button>
+        <button onclick="confirmSaveCustomString()" class="px-5 py-2.5 rounded-xl pogo-gradient-btn text-slate-950 font-bold text-xs sm:text-sm shadow-lg transition">
+          Save String
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: Export / Import Saved Strings Modal -->
+  <div id="importExportModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+    <div class="bg-pogo-card border border-pogo-border rounded-3xl max-w-2xl w-full p-6 shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-pogo-border">
+        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+          <i class="ph-bold ph-arrows-left-right text-cyan-400"></i>
+          <span>Export &amp; Import Saved Strings</span>
+        </h3>
+        <button onclick="closeImportExportModal()" class="text-slate-400 hover:text-white p-1">
+          <i class="ph-bold ph-x text-lg"></i>
+        </button>
+      </div>
+
+      <div class="mt-4 space-y-4">
+        <p class="text-xs sm:text-sm text-slate-300">
+          Backup your saved strings as JSON or plain text, or paste a JSON backup below to import strings across devices.
+        </p>
+
+        <div class="flex flex-wrap gap-2">
+          <button onclick="downloadSavedStringsJSON()" class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 text-xs font-semibold transition">
+            <i class="ph-bold ph-file-js"></i>
+            <span>Download JSON Backup</span>
+          </button>
+          <button onclick="downloadSavedStringsTXT()" class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-teal-500/20 hover:bg-teal-500/30 border border-teal-500/40 text-teal-300 text-xs font-semibold transition">
+            <i class="ph-bold ph-file-text"></i>
+            <span>Download Plain Text (.txt)</span>
+          </button>
+          <button onclick="copyAllSavedStringsText()" class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-pogo-border text-slate-200 text-xs font-semibold transition">
+            <i class="ph-bold ph-copy"></i>
+            <span>Copy All as Text</span>
+          </button>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+            JSON Data (Copy or Paste here to Import)
+          </label>
+          <textarea
+            id="importExportTextarea"
+            rows="7"
+            class="w-full p-3 rounded-xl bg-slate-950 border border-pogo-border focus:border-cyan-400 font-mono text-xs text-slate-200 focus:outline-none"
+          ></textarea>
+        </div>
+      </div>
+
+      <div class="mt-5 flex items-center justify-between gap-2">
+        <button onclick="importFromTextarea()" class="px-4 py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-semibold text-xs sm:text-sm transition">
+          <i class="ph-bold ph-upload-simple mr-1"></i>Import JSON Data
+        </button>
+        <button onclick="closeImportExportModal()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs sm:text-sm font-medium text-slate-300 transition">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Logic -->
+  <script>
+    /********************************************************************
+     * 1. COMPREHENSIVE POKÉMON GO SEARCH STRING DATASET
+     ********************************************************************/
+    const CATEGORIES = [
+      { id: 'All', label: 'All Codes', icon: 'ph-squares-four' },
+      { id: 'Operators', label: 'Operators', icon: 'ph-brackets-curly' },
+      { id: 'IVs & Stats', label: 'IVs & Stats', icon: 'ph-chart-bar' },
+      { id: 'Evolution & Mega/Max', label: 'Evolution & Mega/Max', icon: 'ph-dna' },
+      { id: 'Moves & Combat', label: 'Moves & Combat', icon: 'ph-sword' },
+      { id: 'Rarity & Special', label: 'Rarity & Special', icon: 'ph-sparkle' },
+      { id: 'Origin, Age & Buddy', label: 'Origin, Age & Buddy', icon: 'ph-compass' },
+      { id: 'Power Presets', label: 'Power Presets', icon: 'ph-lightning' }
+    ];
+
+    const SEARCH_CODES = [
+      // --- OPERATORS ---
+      {
+        code: '&',
+        category: 'Operators',
+        title: 'AND Operator',
+        description: 'Requires both terms on either side to match simultaneously. Note: OR (,) is evaluated before AND (&).',
+        example: 'shiny&4*'
+      },
+      {
+        code: ',',
+        category: 'Operators',
+        title: 'OR Operator',
+        description: 'Matches Pokémon satisfying either condition. Semicolon (;) or colon (:) also work identically.',
+        example: 'shiny,lucky'
+      },
+      {
+        code: '!',
+        category: 'Operators',
+        title: 'NOT Operator',
+        description: 'Excludes any Pokémon matching the term immediately following the exclamation mark.',
+        example: '!favorite&!shiny'
+      },
+      {
+        code: '+eevee',
+        category: 'Operators',
+        title: 'Evolution Family (+)',
+        description: 'Prefixing a Pokémon name with + finds all members of its evolutionary line in your storage.',
+        example: '+eevee or +ralts'
+      },
+      {
+        code: 'cp1500-2500',
+        category: 'Operators',
+        title: 'Range Operator (-)',
+        description: 'Finds values between X and Y, above X (X-), or below Y (-Y). Works with cp, hp, age, year, and distance.',
+        example: 'cp-1500 or age0-7'
+      },
+      {
+        code: '#',
+        category: 'Operators',
+        title: 'Custom Tag Filter (#)',
+        description: 'Finds all tagged Pokémon when used alone (#), or a specific custom tag when followed by the tag name.',
+        example: '#trade or !#'
+      },
+
+      // --- IVs & STATS ---
+      {
+        code: '4*',
+        category: 'IVs & Stats',
+        title: '100% IV (Hundo)',
+        description: 'Finds perfect 15/15/15 IV Pokémon with a pink/red 3-star appraisal stamp.',
+        example: '4*&!favorite'
+      },
+      {
+        code: '3*',
+        category: 'IVs & Stats',
+        title: '3-Star Appraisal (82%–98%)',
+        description: 'Finds Pokémon with 37 to 44 total IV stat points.',
+        example: '3*&shadow'
+      },
+      {
+        code: '2*',
+        category: 'IVs & Stats',
+        title: '2-Star Appraisal (67%–80%)',
+        description: 'Finds Pokémon with 30 to 36 total IV stat points.',
+        example: '0*,1*,2*'
+      },
+      {
+        code: '1*',
+        category: 'IVs & Stats',
+        title: '1-Star Appraisal (51%–64%)',
+        description: 'Finds Pokémon with 23 to 29 total IV stat points.',
+        example: '1*&!shiny'
+      },
+      {
+        code: '0*',
+        category: 'IVs & Stats',
+        title: '0-Star Appraisal (0%–49%)',
+        description: 'Finds Pokémon with 0 to 22 total IV stat points.',
+        example: '0*&!4*'
+      },
+      {
+        code: '0attack&0defense&0hp',
+        category: 'IVs & Stats',
+        title: '0% IV (True Nundo)',
+        description: 'Finds ultra-rare 0/0/0 IV Pokémon where all three stat bars are completely empty.',
+        example: '0attack&0defense&0hp'
+      },
+      {
+        code: '0-1attack&3-4defense&3-4hp',
+        category: 'IVs & Stats',
+        title: 'PvP Bulk IV Profile',
+        description: 'Low Attack (0–5 IV) paired with high Defense and HP (11–15 IV) for maximizing stat product in Great & Ultra League.',
+        example: '0-1attack&3-4defense&3-4hp&cp-2500'
+      },
+      {
+        code: '4attack',
+        category: 'IVs & Stats',
+        title: '15 Attack IV (Max Bar)',
+        description: 'Finds Pokémon with a maxed-out 15 Attack IV bar (use 0-4 before attack, defense, or hp).',
+        example: '3*&4attack'
+      },
+      {
+        code: '4defense',
+        category: 'IVs & Stats',
+        title: '15 Defense IV (Max Bar)',
+        description: 'Finds Pokémon with a maxed-out 15 Defense IV bar.',
+        example: '3*&4attack&4defense'
+      },
+      {
+        code: '4hp',
+        category: 'IVs & Stats',
+        title: '15 HP IV (Max Bar)',
+        description: 'Finds Pokémon with a maxed-out 15 Stamina/HP IV bar.',
+        example: '4attack&4hp'
+      },
+      {
+        code: 'cp-1500',
+        category: 'IVs & Stats',
+        title: 'Great League CP Cap',
+        description: 'Finds all Pokémon with 1,500 CP or less.',
+        example: 'cp-1500&0-1attack&3-4defense&3-4hp'
+      },
+      {
+        code: 'cp1500-2500',
+        category: 'IVs & Stats',
+        title: 'Ultra League CP Range',
+        description: 'Finds Pokémon with CP between 1,500 and 2,500.',
+        example: 'cp1500-2500&3*'
+      },
+      {
+        code: 'cp2500-',
+        category: 'IVs & Stats',
+        title: 'Master League / High CP (2500+)',
+        description: 'Finds Pokémon with 2,500 CP or higher for Master League and raids.',
+        example: 'cp2500-&4*'
+      },
+      {
+        code: 'hp150-',
+        category: 'IVs & Stats',
+        title: 'High HP Filter (150+)',
+        description: 'Finds Pokémon with 150 HP or more, great for picking bulky Gym defenders.',
+        example: 'hp150-&!legendary'
+      },
+
+      // --- EVOLUTION & MEGA/MAX ---
+      {
+        code: 'evolve',
+        category: 'Evolution & Mega/Max',
+        title: 'Can Evolve Right Now',
+        description: 'Finds Pokémon for which you currently have enough Candy and met requirements to evolve.',
+        example: 'evolve&!shiny'
+      },
+      {
+        code: 'evolvenew',
+        category: 'Evolution & Mega/Max',
+        title: 'New Pokédex Evolution',
+        description: 'Finds Pokémon whose evolution is not yet registered in your Pokédex.',
+        example: 'evolve&evolvenew'
+      },
+      {
+        code: 'tradeevolve',
+        category: 'Evolution & Mega/Max',
+        title: '0-Candy Trade Evolution',
+        description: 'Species eligible for free evolution once traded (Machoke, Haunter, Kadabra, Graveler, Phantump, etc.).',
+        example: 'tradeevolve&traded'
+      },
+      {
+        code: 'item',
+        category: 'Evolution & Mega/Max',
+        title: 'Item Evolution Ready',
+        description: 'Pokémon requiring an evolution item (Sinnoh Stone, Unova Stone, Sun Stone, etc.) that you can currently evolve.',
+        example: 'item&evolvenew'
+      },
+      {
+        code: 'evolvequest',
+        category: 'Evolution & Mega/Max',
+        title: 'Buddy Adventure Quest Evolution',
+        description: 'Pokémon requiring a specific buddy task to evolve (e.g., Primeape, Pawmo, Bisharp, Galarian Slowpoke, Charcadet).',
+        example: 'evolvequest'
+      },
+      {
+        code: 'megaevolve',
+        category: 'Evolution & Mega/Max',
+        title: 'Can Mega Evolve',
+        description: 'Finds Pokémon capable of Mega Evolution or Primal Reversion for which you have sufficient Mega Energy.',
+        example: 'megaevolve&mega1-2'
+      },
+      {
+        code: 'mega0',
+        category: 'Evolution & Mega/Max',
+        title: 'Mega Level 0 (Unregistered)',
+        description: 'Mega-capable species that have never been Mega Evolved yet.',
+        example: 'megaevolve&mega0'
+      },
+      {
+        code: 'mega1-3',
+        category: 'Evolution & Mega/Max',
+        title: 'Active Mega History (Levels 1–3)',
+        description: 'All Pokémon that have been Mega Evolved at least once (can be unlocked for free after cooldown).',
+        example: 'mega1-3'
+      },
+      {
+        code: 'mega3',
+        category: 'Evolution & Mega/Max',
+        title: 'Max Mega Level (Level 3)',
+        description: 'Pokémon at Max Mega Level granting maximum Catch Candy XL chance and XP bonuses.',
+        example: 'mega3'
+      },
+      {
+        code: 'dynamax',
+        category: 'Evolution & Mega/Max',
+        title: 'Dynamax Capable',
+        description: 'Finds Pokémon caught from Power Spots or Research capable of Dynamaxing in Max Battles.',
+        example: 'dynamax&3*,4*'
+      },
+      {
+        code: 'gigantamax',
+        category: 'Evolution & Mega/Max',
+        title: 'Gigantamax Capable',
+        description: 'Finds special Gigantamax factor Pokémon with G-Max moves.',
+        example: 'gigantamax'
+      },
+      {
+        code: 'fusion',
+        category: 'Evolution & Mega/Max',
+        title: 'Fusion Capable / Fused',
+        description: 'Finds Pokémon involved in fusion mechanics (e.g., Necrozma Dawn Wings / Dusk Mane, Kyurem Black / White).',
+        example: 'fusion'
+      },
+
+      // --- MOVES & COMBAT ---
+      {
+        code: '@special',
+        category: 'Moves & Combat',
+        title: 'Exclusive / Legacy Move',
+        description: 'Finds Pokémon with Community Day, Elite TM, event-exclusive moves, or Shadow/Purified moves.',
+        example: '@special&!@frustration&!@return'
+      },
+      {
+        code: '@frustration',
+        category: 'Moves & Combat',
+        title: 'Knows Frustration',
+        description: 'Finds Shadow Pokémon that still have the Charged Move Frustration (ready to TM during Rocket Takeover events).',
+        example: 'shadow&@frustration&3*,4*'
+      },
+      {
+        code: '@return',
+        category: 'Moves & Combat',
+        title: 'Knows Return',
+        description: 'Finds Purified Pokémon that know the exclusive Normal-type move Return.',
+        example: 'purified&@return'
+      },
+      {
+        code: '@weather',
+        category: 'Moves & Combat',
+        title: 'Weather-Boosted Moves',
+        description: 'Finds Pokémon whose attacks receive a 20% damage bonus in your current local weather.',
+        example: '@weather&cp2500-'
+      },
+      {
+        code: '@1fighting',
+        category: 'Moves & Combat',
+        title: 'Fast Move Type (@1type)',
+        description: 'Replace "fighting" with any type or specific move name to filter strictly by Fast Attack.',
+        example: '@1fighting&@2fighting'
+      },
+      {
+        code: '@2fighting',
+        category: 'Moves & Combat',
+        title: '1st Charged Move (@2type)',
+        description: 'Replace "fighting" with any type or move name to filter by the first Charged Move slot.',
+        example: '@2psystrike'
+      },
+      {
+        code: '@3move',
+        category: 'Moves & Combat',
+        title: '2nd Charged Move (@3type)',
+        description: 'Replace "move" with a type/move, or negate as !@3move to find Pokémon missing a second Charged Attack.',
+        example: '!@3move&cp1500-'
+      },
+      {
+        code: '>water',
+        category: 'Moves & Combat',
+        title: 'Super-Effective Against (>type)',
+        description: 'Finds Pokémon with moves super-effective against the specified type (replace "water" with any type).',
+        example: '>water&cp2500-'
+      },
+      {
+        code: '<fire',
+        category: 'Moves & Combat',
+        title: 'Weak To (<type)',
+        description: 'Finds Pokémon defensively vulnerable to the specified elemental type.',
+        example: '<fire'
+      },
+
+      // --- RARITY & SPECIAL ---
+      {
+        code: 'shiny',
+        category: 'Rarity & Special',
+        title: 'Shiny Pokémon',
+        description: 'Finds all alternate-colored Shiny Pokémon in your storage.',
+        example: 'shiny&3*,4*'
+      },
+      {
+        code: 'lucky',
+        category: 'Rarity & Special',
+        title: 'Lucky Pokémon',
+        description: 'Finds Lucky Pokémon obtained via trades (50% Stardust power-up discount and 12/12/12 IV floor).',
+        example: 'lucky&4*'
+      },
+      {
+        code: 'shadow',
+        category: 'Rarity & Special',
+        title: 'Shadow Pokémon',
+        description: 'Finds Shadow Pokémon rescued from Team GO Rocket (+20% Attack bonus, -20% Defense).',
+        example: 'shadow&3*,4*'
+      },
+      {
+        code: 'purified',
+        category: 'Rarity & Special',
+        title: 'Purified Pokémon',
+        description: 'Finds former Shadow Pokémon that have been Purified.',
+        example: 'purified&4*'
+      },
+      {
+        code: 'legendary',
+        category: 'Rarity & Special',
+        title: 'Legendary Pokémon',
+        description: 'Finds all Legendary tier Pokémon (Mewtwo, Rayquaza, Zacian, Origin Palkia, etc.).',
+        example: 'legendary&distance100-'
+      },
+      {
+        code: 'mythical',
+        category: 'Rarity & Special',
+        title: 'Mythical Pokémon',
+        description: 'Finds Mythical Pokémon (Mew, Celebi, Jirachi, Darkrai, Genesect, Meltan, etc.).',
+        example: 'mythical'
+      },
+      {
+        code: 'ultrabeast',
+        category: 'Rarity & Special',
+        title: 'Ultra Beasts',
+        description: 'Finds Ultra Beasts from wormholes (Kartana, Nihilego, Xurkitree, Necrozma, etc.).',
+        example: 'ultrabeast'
+      },
+      {
+        code: 'costume',
+        category: 'Rarity & Special',
+        title: 'Event Costumed Pokémon',
+        description: 'Finds Pokémon wearing hats, outfits, clones, or special event accessories.',
+        example: 'costume&shiny'
+      },
+      {
+        code: 'background',
+        category: 'Rarity & Special',
+        title: 'Any Special Background Card',
+        description: 'Finds Pokémon featuring either a Location Background or Special Event Background catch card.',
+        example: 'background'
+      },
+      {
+        code: 'locationbackground',
+        category: 'Rarity & Special',
+        title: 'Location Catch Card',
+        description: 'Finds Pokémon with real-world city/GO Fest/Safari Zone location background cards.',
+        example: 'locationbackground&shiny'
+      },
+      {
+        code: 'specialbackground',
+        category: 'Rarity & Special',
+        title: 'Special Event Background',
+        description: 'Finds Pokémon with commemorative non-location special background cards (e.g., Wormhole, Dual Destiny).',
+        example: 'specialbackground'
+      },
+      {
+        code: 'xxl',
+        category: 'Rarity & Special',
+        title: 'XXL Size (Showcase Winners)',
+        description: 'Finds Extra-Extra-Large Pokémon ideal for winning PokéStop Showcases.',
+        example: 'xxl'
+      },
+      {
+        code: 'xxs',
+        category: 'Rarity & Special',
+        title: 'XXS Size (Tiny Pokémon)',
+        description: 'Finds Extra-Extra-Small tiny Pokémon.',
+        example: 'xxs'
+      },
+      {
+        code: 'eggsonly',
+        category: 'Rarity & Special',
+        title: 'Baby Pokémon (Eggs Only)',
+        description: 'Finds Baby Pokémon such as Pichu, Togepi, Riolu, Toxel, Magby, and Mime Jr. (discounted 2nd Charged Move).',
+        example: 'eggsonly&shiny'
+      },
+      {
+        code: 'alola',
+        category: 'Rarity & Special',
+        title: 'Alolan Region / Forms',
+        description: 'Finds Alolan regional variants and Gen 7 species.',
+        example: 'alola&shiny'
+      },
+      {
+        code: 'galar',
+        category: 'Rarity & Special',
+        title: 'Galarian Region / Forms',
+        description: 'Finds Galarian regional variants and Gen 8 species.',
+        example: 'galar'
+      },
+      {
+        code: 'hisui',
+        category: 'Rarity & Special',
+        title: 'Hisuian Region / Forms',
+        description: 'Finds Hisuian forms and Pokémon originally discovered in Hisui.',
+        example: 'hisui'
+      },
+      {
+        code: 'paldea',
+        category: 'Rarity & Special',
+        title: 'Paldean Region / Forms',
+        description: 'Finds Paldean forms and Gen 9 Pokémon.',
+        example: 'paldea'
+      },
+
+      // --- ORIGIN, AGE & BUDDY ---
+      {
+        code: 'age0',
+        category: 'Origin, Age & Buddy',
+        title: 'Caught in Last 24 Hours',
+        description: 'Finds every Pokémon caught within the past 24 hours. Combine with !4* or 0*,1*,2* for daily cleanup.',
+        example: 'age0&4*'
+      },
+      {
+        code: 'age0-7',
+        category: 'Origin, Age & Buddy',
+        title: 'Caught in the Last Week',
+        description: 'Finds Pokémon caught within the last 7 days.',
+        example: 'age0-7&shiny'
+      },
+      {
+        code: 'year2016-2019',
+        category: 'Origin, Age & Buddy',
+        title: 'Vintage Lucky Trade Years',
+        description: 'Finds older Pokémon from 2016–2019 that trigger guaranteed or high-probability Lucky Trades.',
+        example: 'year2016-2019&!traded'
+      },
+      {
+        code: 'distance100-',
+        category: 'Origin, Age & Buddy',
+        title: '100km+ Trade Distance (Guaranteed XL)',
+        description: 'Pokémon caught 100+ km away from your current location — trading them guarantees +3 Candy and +1 Candy XL.',
+        example: 'distance100-&!traded&!favorite'
+      },
+      {
+        code: 'distance1000-',
+        category: 'Origin, Age & Buddy',
+        title: '1,000km+ Long-Distance (Pilot Medal)',
+        description: 'Pokémon caught over 1,000 km away (often from 7km global friend Eggs or Remote Raids).',
+        example: 'distance1000-&!traded'
+      },
+      {
+        code: 'buddy5',
+        category: 'Origin, Age & Buddy',
+        title: 'Best Buddy (Ribbon Unlocked)',
+        description: 'Finds Pokémon that have reached Best Buddy status (Level +1 CP boost when active).',
+        example: 'buddy5'
+      },
+      {
+        code: 'buddy1-4',
+        category: 'Origin, Age & Buddy',
+        title: 'Buddy In Progress (Good to Ultra)',
+        description: 'Finds Pokémon you have walked with or earned hearts on that are not yet Best Buddies.',
+        example: 'buddy1-4'
+      },
+      {
+        code: 'buddy0',
+        category: 'Origin, Age & Buddy',
+        title: 'Never Buddied',
+        description: 'Finds Pokémon that have never been set as your Buddy.',
+        example: '4*&buddy0'
+      },
+      {
+        code: 'hatched',
+        category: 'Origin, Age & Buddy',
+        title: 'Hatched from Eggs',
+        description: 'Finds all Pokémon hatched from 2km, 5km, 7km, 10km, or 12km Strange Eggs.',
+        example: 'hatched&shiny'
+      },
+      {
+        code: 'traded',
+        category: 'Origin, Age & Buddy',
+        title: 'Received via Trade',
+        description: 'Finds Pokémon obtained from trading with another Trainer (cannot be traded again).',
+        example: 'traded&!lucky&0*,1*,2*'
+      },
+      {
+        code: 'raid',
+        category: 'Origin, Age & Buddy',
+        title: 'Caught from Any Raid',
+        description: 'Finds Pokémon caught from standard, Mega, Primal, Shadow, or Remote Raid Battles.',
+        example: 'raid&shiny'
+      },
+      {
+        code: 'remoteraid',
+        category: 'Origin, Age & Buddy',
+        title: 'Caught via Remote Raid Pass',
+        description: 'Finds Pokémon specifically caught using a Remote Raid Pass.',
+        example: 'remoteraid&distance100-'
+      },
+      {
+        code: 'research',
+        category: 'Origin, Age & Buddy',
+        title: 'Research Breakthrough / Tasks',
+        description: 'Finds Pokémon caught from Field, Timed, Special, or Collection Challenge Research.',
+        example: 'research&4*'
+      },
+      {
+        code: 'gbl',
+        category: 'Origin, Age & Buddy',
+        title: 'GO Battle League Encounters',
+        description: 'Finds Pokémon caught as GO Battle League reward encounters.',
+        example: 'gbl&legendary'
+      },
+      {
+        code: 'rocket',
+        category: 'Origin, Age & Buddy',
+        title: 'Team GO Rocket Rescue',
+        description: 'Finds Pokémon rescued from Grunts, Leaders (Cliff, Arlo, Sierra), or Giovanni.',
+        example: 'rocket&3*,4*'
+      },
+      {
+        code: 'defender',
+        category: 'Origin, Age & Buddy',
+        title: 'Currently Defending a Gym',
+        description: 'Finds your Pokémon currently stationed inside a Gym.',
+        example: 'defender'
+      },
+      {
+        code: 'countcandy100-',
+        category: 'Origin, Age & Buddy',
+        title: '100+ Regular Candy Available',
+        description: 'Finds Pokémon for which you currently hold at least 100 regular Candy.',
+        example: 'countcandy100-&evolve'
+      },
+      {
+        code: 'countcandyxl296-',
+        category: 'Origin, Age & Buddy',
+        title: '296+ Candy XL (Level 50 Ready)',
+        description: 'Finds species for which you have enough Candy XL (296) to max a non-Shadow Pokémon to Level 50.',
+        example: '4*&countcandyxl296-'
+      },
+
+      // --- POWER PRESETS ---
+      {
+        code: '0*,1*,2*&!shiny&!lucky&!shadow&!costume&!legendary&!mythical&!ultrabeast&!xxl&!xxs&!background&!4*&!#',
+        category: 'Power Presets',
+        title: 'Safe Quick Storage Cleanup',
+        description: 'Finds low-appraisal (0*–2*) Pokémon while safely excluding Shinies, Luckies, Shadows, Costumes, Legendaries, XXL/XXS, Backgrounds, and anything Tagged.',
+        example: 'Add &age0 for today only'
+      },
+      {
+        code: '0-1attack&3-4defense&3-4hp&cp-2500&!shiny&!lucky',
+        category: 'Power Presets',
+        title: 'Great & Ultra League PvP IV Hunt',
+        description: 'Highlights newly caught Pokémon with low Attack and high Defense/Stamina bars suitable for capped-CP PvP leagues.',
+        example: 'Inspect before transferring 1* or 2* catches'
+      },
+      {
+        code: 'evolve&!shiny&!shadow&!4*&!lucky&!#',
+        category: 'Power Presets',
+        title: 'Lucky Egg Mass Evolution XP Grind',
+        description: 'Finds disposable Pokémon ready to evolve right now during a 2x Evolution XP Spotlight Hour.',
+        example: 'Pop a Lucky Egg and evolve continuously'
+      },
+      {
+        code: 'shadow&@frustration&3*,4*',
+        category: 'Power Presets',
+        title: 'Rocket Takeover Charged TM Prep',
+        description: 'Finds your high-IV (3* and 4*) Shadow Pokémon that still need Frustration removed with a Charged TM.',
+        example: 'Use during Team GO Rocket Takeover events'
+      }
+    ];
+
+    /********************************************************************
+     * 2. DEFAULT SAVED STRINGS (FOR LOCALSTORAGE INITIALIZATION)
+     ********************************************************************/
+    const DEFAULT_SAVED_STRINGS = [
+      {
+        id: 'preset-cleanup',
+        title: 'Quick Mass Transfer Cleanup',
+        tag: 'Storage Cleanup',
+        query: '0*,1*,2*&!shiny&!lucky&!shadow&!costume&!legendary&!mythical&!ultrabeast&!xxl&!xxs&!background&!4*&!#',
+        desc: 'Safely filters 0*–2* catches while protecting shinies, shadows, costumes, XXL/XXS, backgrounds & tagged Pokémon.'
+      },
+      {
+        id: 'preset-pvp',
+        title: 'Great & Ultra League PvP IVs',
+        tag: 'PvP & GBL',
+        query: '0-1attack&3-4defense&3-4hp&cp-2500',
+        desc: 'Finds high-bulk, low-Attack IV candidates for 1500 CP and 2500 CP leagues.'
+      },
+      {
+        id: 'preset-dist-xl',
+        title: 'Distance 100km+ Trade XL',
+        tag: 'Trading & XL',
+        query: 'distance100-&!traded&!shiny&!4*&!favorite&!#',
+        desc: 'Pokémon caught 100+ km away that haven’t been traded yet (guarantees 1 Candy XL per trade).'
+      },
+      {
+        id: 'preset-frustration',
+        title: 'Shadow Frustration TM Prep',
+        tag: 'Raids & Max',
+        query: 'shadow&@frustration&3*,4*',
+        desc: 'High-IV Shadow Pokémon that still know Frustration for Team GO Rocket Takeover events.'
+      },
+      {
+        id: 'preset-daily',
+        title: 'Daily Catch Check (Last 24h)',
+        tag: 'Collection & Daily',
+        query: 'age0&!4*&!shiny&!xxl&!background',
+        desc: 'Reviews everything caught today excluding Hundos, Shinies, XXL showcase picks, and Backgrounds.'
+      },
+      {
+        id: 'preset-mega-daily',
+        title: 'Daily Free Mega Level-Up',
+        tag: 'Raids & Max',
+        query: 'megaevolve&mega1-2',
+        desc: 'Finds Mega Pokémon at Level 1 or 2 so you can Mega Evolve them to reach Max Level 3.'
+      }
+    ];
+
+    const STORAGE_KEY = 'pogo_saved_search_strings_v1';
+
+    /********************************************************************
+     * 3. APPLICATION STATE
+     ********************************************************************/
+    let activeCategory = 'All';
+    let joinMode = '&'; // '&' or ','
+    let negateNext = false;
+    let builderHistory = [];
+    let savedStrings = [];
+    let savedDrawerOpen = true;
+
+    /********************************************************************
+     * 4. INITIALIZATION
+     ********************************************************************/
+    window.addEventListener('DOMContentLoaded', () => {
+      loadSavedStringsFromStorage();
+      renderCategoryTabs();
+      renderDirectory();
+      renderSavedStrings();
+      updateBuilderStats();
+    });
+
+    function loadSavedStringsFromStorage() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            savedStrings = parsed;
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('Could not read saved strings from localStorage:', err);
+      }
+      savedStrings = JSON.parse(JSON.stringify(DEFAULT_SAVED_STRINGS));
+      persistSavedStrings();
+    }
+
+    function persistSavedStrings() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(savedStrings));
+      } catch (err) {
+        console.warn('Failed to persist to localStorage:', err);
+      }
+      const badge = document.getElementById('savedCountBadge');
+      if (badge) badge.textContent = savedStrings.length;
+    }
+
+    /********************************************************************
+     * 5. LIVE CUSTOM STRING BUILDER FUNCTIONS
+     ********************************************************************/
+    function pushBuilderHistory(currentValue) {
+      builderHistory.push(currentValue);
+      if (builderHistory.length > 30) builderHistory.shift();
+      document.getElementById('undoBtn').disabled = builderHistory.length === 0;
+    }
+
+    function undoBuilderStep() {
+      if (builderHistory.length === 0) return;
+      const prev = builderHistory.pop();
+      document.getElementById('builderInput').value = prev;
+      document.getElementById('undoBtn').disabled = builderHistory.length === 0;
+      updateBuilderStats();
+    }
+
+    function clearBuilder() {
+      const input = document.getElementById('builderInput');
+      if (!input.value) return;
+      pushBuilderHistory(input.value);
+      input.value = '';
+      updateBuilderStats();
+      showToast('Cleared builder bar', 'info');
+    }
+
+    function setJoinMode(mode) {
+      joinMode = mode;
+      const andBtn = document.getElementById('joinAndBtn');
+      const orBtn = document.getElementById('joinOrBtn');
+      if (mode === '&') {
+        andBtn.className = 'px-2.5 py-1 rounded-lg font-mono font-semibold transition bg-cyan-500/20 text-cyan-300 border border-cyan-500/40';
+        orBtn.className = 'px-2.5 py-1 rounded-lg font-mono font-semibold transition text-slate-400 hover:text-slate-200';
+      } else {
+        orBtn.className = 'px-2.5 py-1 rounded-lg font-mono font-semibold transition bg-amber-500/20 text-amber-300 border border-amber-500/40';
+        andBtn.className = 'px-2.5 py-1 rounded-lg font-mono font-semibold transition text-slate-400 hover:text-slate-200';
+      }
+    }
+
+    function toggleNegateNext() {
+      negateNext = !negateNext;
+      const btn = document.getElementById('negateNextBtn');
+      const statusText = document.getElementById('negateStatusText');
+
+      if (negateNext) {
+        btn.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/20 border-2 border-rose-500 text-rose-200 font-semibold transition negate-active-ring';
+        statusText.className = 'font-mono text-[11px] px-1.5 py-0.2 rounded bg-rose-500 text-slate-950 font-bold';
+        statusText.textContent = 'ON (!)';
+      } else {
+        btn.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-pogo-border text-slate-300 hover:text-white font-medium transition';
+        statusText.className = 'font-mono text-[11px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400';
+        statusText.textContent = 'OFF';
+      }
+    }
+
+    function appendCodeToBuilder(code) {
+      const input = document.getElementById('builderInput');
+      const current = input.value.trim();
+      pushBuilderHistory(current);
+
+      let token = code;
+
+      // Apply Negate Next (!) if active and token isn't a standalone binary operator
+      if (negateNext && !['&', ',', '-', '+'].includes(token)) {
+        token = token.startsWith('!') ? token.slice(1) : '!' + token;
+        // Turn off negateNext automatically after one use for smooth UX
+        toggleNegateNext();
+      }
+
+      if (!current) {
+        input.value = token;
+      } else {
+        // Check if current already ends with an operator
+        const lastChar = current.slice(-1);
+        const endsWithOperator = ['&', ',', ';', ':', '!', '+', '-', '#', '@', '>', '<'].includes(lastChar);
+        const isRawOperator = ['&', ',', '!', '+', '-', '#'].includes(code);
+
+        if (endsWithOperator || isRawOperator) {
+          input.value = current + token;
+        } else {
+          input.value = current + joinMode + token;
+        }
+      }
+
+      updateBuilderStats();
+      showToast(`Added "${token}" to builder`, 'success');
+    }
+
+    function insertRawOperator(op) {
+      const input = document.getElementById('builderInput');
+      pushBuilderHistory(input.value);
+      input.value = input.value + op;
+      input.focus();
+      updateBuilderStats();
+    }
+
+    function updateBuilderStats() {
+      const input = document.getElementById('builderInput');
+      const clearBtn = document.getElementById('clearBtn');
+      if (clearBtn) {
+        clearBtn.style.opacity = input.value.length > 0 ? '1' : '0.35';
+      }
+    }
+
+    function copyActiveBuilderString() {
+      const val = document.getElementById('builderInput').value.trim();
+      if (!val) {
+        showToast('Builder bar is empty — click a search card first!', 'warning');
+        return;
+      }
+      copyTextToClipboard(val, 'Copied custom search string to clipboard!');
+    }
+
+    /********************************************************************
+     * 6. DIRECTORY RENDERING & FILTERING
+     ********************************************************************/
+    function renderCategoryTabs() {
+      const container = document.getElementById('categoryTabs');
+      container.innerHTML = CATEGORIES.map(cat => {
+        const isActive = cat.id === activeCategory;
+        const count = cat.id === 'All'
+          ? SEARCH_CODES.length
+          : SEARCH_CODES.filter(item => item.category === cat.id).length;
+
+        return `
+          <button
+            onclick="selectCategory('${cat.id.replace(/'/g, "\\'")}')"
+            class="flex items-center gap-2 px-3.5 py-2 rounded-2xl text-xs sm:text-sm font-semibold whitespace-nowrap transition border ${
+              isActive
+                ? 'bg-cyan-500 text-slate-950 border-cyan-400 shadow-lg shadow-cyan-500/20'
+                : 'bg-pogo-card hover:bg-pogo-cardHover text-slate-300 border-pogo-border'
+            }"
+          >
+            <i class="ph-bold ${cat.icon}"></i>
+            <span>${cat.label}</span>
+            <span class="text-[11px] font-mono px-1.5 py-0.2 rounded-full ${
+              isActive ? 'bg-slate-950/25 text-slate-950 font-bold' : 'bg-slate-800 text-slate-400'
+            }">${count}</span>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function selectCategory(catId) {
+      activeCategory = catId;
+      renderCategoryTabs();
+      renderDirectory();
+    }
+
+    function clearDirectorySearch() {
+      const input = document.getElementById('directorySearchInput');
+      input.value = '';
+      renderDirectory();
+      input.focus();
+    }
+
+    function resetDirectoryFilters() {
+      activeCategory = 'All';
+      document.getElementById('directorySearchInput').value = '';
+      renderCategoryTabs();
+      renderDirectory();
+    }
+
+    function getCategoryBadgeStyle(category) {
+      switch (category) {
+        case 'Operators':
+          return 'bg-purple-500/15 text-purple-300 border-purple-500/30';
+        case 'IVs & Stats':
+          return 'bg-rose-500/15 text-rose-300 border-rose-500/30';
+        case 'Evolution & Mega/Max':
+          return 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30';
+        case 'Moves & Combat':
+          return 'bg-sky-500/15 text-sky-300 border-sky-500/30';
+        case 'Rarity & Special':
+          return 'bg-amber-500/15 text-amber-300 border-amber-500/30';
+        case 'Origin, Age & Buddy':
+          return 'bg-teal-500/15 text-teal-300 border-teal-500/30';
+        case 'Power Presets':
+          return 'bg-pink-500/15 text-pink-300 border-pink-500/30';
+        default:
+          return 'bg-slate-800 text-slate-300 border-slate-700';
+      }
+    }
+
+    function renderDirectory() {
+      const query = document.getElementById('directorySearchInput').value.trim().toLowerCase();
+      const clearBtn = document.getElementById('clearSearchBtn');
+      if (clearBtn) {
+        clearBtn.classList.toggle('hidden', query.length === 0);
+      }
+
+      const filtered = SEARCH_CODES.filter(item => {
+        const matchesCat = activeCategory === 'All' || item.category === activeCategory;
+        if (!matchesCat) return false;
+        if (!query) return true;
+        return (
+          item.code.toLowerCase().includes(query) ||
+          item.title.toLowerCase().includes(query) ||
+          item.description.toLowerCase().includes(query) ||
+          item.example.toLowerCase().includes(query) ||
+          item.category.toLowerCase().includes(query)
+        );
+      });
+
+      document.getElementById('visibleCount').textContent = filtered.length;
+      const grid = document.getElementById('directoryGrid');
+      const emptyState = document.getElementById('emptyDirectoryState');
+
+      if (filtered.length === 0) {
+        grid.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+      grid.innerHTML = filtered.map((item, idx) => {
+        const badgeStyle = getCategoryBadgeStyle(item.category);
+        const escapedCode = item.code.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+
+        return `
+          <div
+            onclick="appendCodeToBuilder('${escapedCode}')"
+            class="group cursor-pointer bg-pogo-card hover:bg-pogo-cardHover border border-pogo-border hover:border-cyan-400/60 rounded-2xl p-4 flex flex-col justify-between transition-all duration-150 shadow-md hover:shadow-cyan-500/10 active:scale-[0.99]"
+          >
+            <div>
+              <!-- Top Row: Code Badge + Direct Copy Button -->
+              <div class="flex items-start justify-between gap-2 mb-2.5">
+                <div class="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 group-hover:border-cyan-500/40 font-mono text-xs sm:text-sm font-bold text-cyan-300 break-all">
+                  ${escapeHtml(item.code)}
+                </div>
+                <button
+                  onclick="event.stopPropagation(); copyTextToClipboard('${escapedCode}', 'Copied ${escapedCode} to clipboard!')"
+                  title="Copy only this code"
+                  class="p-2 rounded-xl bg-slate-900 hover:bg-cyan-500 hover:text-slate-950 text-slate-400 border border-slate-800 transition flex-shrink-0"
+                >
+                  <i class="ph-bold ph-copy text-sm"></i>
+                </button>
+              </div>
+
+              <!-- Title & Category Tag -->
+              <div class="flex items-center justify-between gap-2 mb-1.5">
+                <h3 class="font-bold text-sm text-white group-hover:text-cyan-200 transition">
+                  ${escapeHtml(item.title)}
+                </h3>
+              </div>
+
+              <span class="inline-block text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-md border mb-2 ${badgeStyle}">
+                ${escapeHtml(item.category)}
+              </span>
+
+              <!-- Description -->
+              <p class="text-xs text-slate-300 leading-relaxed">
+                ${escapeHtml(item.description)}
+              </p>
+            </div>
+
+            <!-- Footer Row: Example & Append Action Hint -->
+            <div class="mt-3.5 pt-2.5 border-t border-slate-800/80 flex items-center justify-between gap-2 text-[11px]">
+              <span class="font-mono text-slate-400 truncate" title="Example: ${escapeHtml(item.example)}">
+                Ex: <span class="text-slate-300">${escapeHtml(item.example)}</span>
+              </span>
+              <span class="text-cyan-400 font-semibold flex items-center gap-1 opacity-80 group-hover:opacity-100 flex-shrink-0">
+                <i class="ph-bold ph-plus-circle"></i>
+                <span>Add</span>
+              </span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    /********************************************************************
+     * 7. SAVED CUSTOM STRINGS MANAGER (LOCALSTORAGE + CRUD)
+     ********************************************************************/
+    function toggleSavedDrawer() {
+      savedDrawerOpen = !savedDrawerOpen;
+      const section = document.getElementById('savedStringsSection');
+      if (savedDrawerOpen) {
+        section.classList.remove('hidden');
+      } else {
+        section.classList.add('hidden');
+      }
+    }
+
+    function renderSavedStrings() {
+      persistSavedStrings();
+      const grid = document.getElementById('savedStringsGrid');
+
+      if (savedStrings.length === 0) {
+        grid.innerHTML = `
+          <div class="col-span-full py-8 text-center text-slate-400 text-sm border border-dashed border-pogo-border rounded-2xl">
+            No saved strings yet. Build a string above and click <strong>"Save to My Strings"</strong>!
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = savedStrings.map((item, index) => {
+        const escapedQuery = item.query.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        return `
+          <div class="bg-slate-950/75 border border-pogo-border hover:border-amber-500/40 rounded-2xl p-4 flex flex-col justify-between gap-3 transition shadow-sm">
+            <div>
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <span class="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                    ${escapeHtml(item.tag || 'Custom')}
+                  </span>
+                  <h4 class="font-bold text-sm text-white mt-1.5">${escapeHtml(item.title)}</h4>
+                </div>
+                <button
+                  onclick="deleteSavedString(${index})"
+                  title="Delete saved preset"
+                  class="text-slate-500 hover:text-rose-400 p-1 rounded-lg transition"
+                >
+                  <i class="ph-bold ph-trash text-sm"></i>
+                </button>
+              </div>
+
+              ${item.desc ? `<p class="text-xs text-slate-400 mt-1 line-clamp-2">${escapeHtml(item.desc)}</p>` : ''}
+
+              <div class="mt-2.5 p-2.5 rounded-xl bg-slate-900 border border-slate-800 font-mono text-xs text-cyan-300 break-all select-all">
+                ${escapeHtml(item.query)}
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2 pt-1">
+              <button
+                onclick="copyTextToClipboard('${escapedQuery}', 'Copied &quot;${escapeHtml(item.title)}&quot; string!')"
+                class="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 font-semibold text-xs transition"
+              >
+                <i class="ph-bold ph-copy"></i>
+                <span>Copy String</span>
+              </button>
+              <button
+                onclick="loadSavedIntoBuilder(${index})"
+                class="flex items-center justify-center gap-1 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs transition"
+                title="Load into top builder bar to edit"
+              >
+                <i class="ph-bold ph-pencil-simple"></i>
+                <span>Load</span>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function loadSavedIntoBuilder(index) {
+      const item = savedStrings[index];
+      if (!item) return;
+      const input = document.getElementById('builderInput');
+      pushBuilderHistory(input.value);
+      input.value = item.query;
+      updateBuilderStats();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      showToast(`Loaded "${item.title}" into builder`, 'info');
+    }
+
+    function deleteSavedString(index) {
+      const removed = savedStrings.splice(index, 1);
+      renderSavedStrings();
+      if (removed[0]) {
+        showToast(`Removed "${removed[0].title}"`, 'info');
+      }
+    }
+
+    function resetDefaultSavedStrings() {
+      savedStrings = JSON.parse(JSON.stringify(DEFAULT_SAVED_STRINGS));
+      renderSavedStrings();
+      showToast('Restored default essential search strings!', 'success');
+    }
+
+    function openSaveStringModal() {
+      const currentQuery = document.getElementById('builderInput').value.trim();
+      document.getElementById('saveQueryInput').value = currentQuery;
+      document.getElementById('saveTitleInput').value = '';
+      document.getElementById('saveDescInput').value = '';
+
+      const modal = document.getElementById('saveModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      document.getElementById('saveTitleInput').focus();
+    }
+
+    function closeSaveStringModal() {
+      const modal = document.getElementById('saveModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function confirmSaveCustomString() {
+      const title = document.getElementById('saveTitleInput').value.trim() || 'Custom PoGO Filter';
+      const tag = document.getElementById('saveTagInput').value;
+      const query = document.getElementById('saveQueryInput').value.trim();
+      const desc = document.getElementById('saveDescInput').value.trim();
+
+      if (!query) {
+        showToast('Please enter a search string to save', 'warning');
+        return;
+      }
+
+      savedStrings.unshift({
+        id: 'custom-' + Date.now(),
+        title,
+        tag,
+        query,
+        desc
+      });
+
+      renderSavedStrings();
+      closeSaveStringModal();
+
+      if (!savedDrawerOpen) {
+        toggleSavedDrawer();
+      }
+      showToast(`Saved "${title}" to My Strings!`, 'success');
+    }
+
+    /********************************************************************
+     * 8. EXPORT / IMPORT & DOWNLOAD STANDALONE APP
+     ********************************************************************/
+    function openImportExportModal() {
+      const modal = document.getElementById('importExportModal');
+      const textarea = document.getElementById('importExportTextarea');
+      textarea.value = JSON.stringify(savedStrings, null, 2);
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeImportExportModal() {
+      const modal = document.getElementById('importExportModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function importFromTextarea() {
+      const raw = document.getElementById('importExportTextarea').value.trim();
+      if (!raw) {
+        showToast('Paste a valid JSON array first', 'warning');
+        return;
+      }
+      try {
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) throw new Error('JSON must be an array');
+        const cleaned = parsed
+          .filter(item => item && typeof item.query === 'string')
+          .map(item => ({
+            id: item.id || 'import-' + Math.random().toString(36).slice(2, 8),
+            title: item.title || 'Imported String',
+            tag: item.tag || 'Custom',
+            query: item.query,
+            desc: item.desc || ''
+          }));
+
+        if (cleaned.length === 0) throw new Error('No valid search strings found in JSON');
+        savedStrings = cleaned;
+        renderSavedStrings();
+        closeImportExportModal();
+        showToast(`Imported ${cleaned.length} saved search strings!`, 'success');
+      } catch (err) {
+        showToast('Invalid JSON format. Please check your syntax.', 'warning');
+      }
+    }
+
+    function downloadSavedStringsJSON() {
+      const dataStr = JSON.stringify(savedStrings, null, 2);
+      triggerFileDownload(dataStr, 'pogo-saved-strings.json', 'application/json');
+      showToast('Downloaded JSON backup!', 'success');
+    }
+
+    function downloadSavedStringsTXT() {
+      const lines = savedStrings.map(s => `# ${s.title} [${s.tag || 'Custom'}]\n${s.desc ? '// ' + s.desc + '\n' : ''}${s.query}\n`).join('\n');
+      triggerFileDownload(lines, 'pogo-search-strings.txt', 'text/plain');
+      showToast('Downloaded .txt search strings!', 'success');
+    }
+
+    function copyAllSavedStringsText() {
+      const lines = savedStrings.map(s => `${s.title}:\n${s.query}`).join('\n\n');
+      copyTextToClipboard(lines, 'Copied all saved strings to clipboard!');
+    }
+
+    function downloadStandaloneApp() {
+      const htmlContent = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+      triggerFileDownload(htmlContent, 'PoGO_Search_String_Explorer.html', 'text/html');
+      showToast('Downloaded standalone HTML app!', 'success');
+    }
+
+    function triggerFileDownload(content, filename, mimeType) {
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    /********************************************************************
+     * 9. CLIPBOARD & TOAST UTILITIES
+     ********************************************************************/
+    function copyTextToClipboard(text, successMsg) {
+      // Fallback-safe copy method for iframe and mobile browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-9999px';
+      textArea.style.top = '0';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+
+      try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+          showToast(successMsg || 'Copied to clipboard!', 'success');
+        } else if (navigator.clipboard) {
+          navigator.clipboard.writeText(text).then(() => {
+            showToast(successMsg || 'Copied to clipboard!', 'success');
+          });
+        }
+      } catch (err) {
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(text).then(() => {
+            showToast(successMsg || 'Copied to clipboard!', 'success');
+          });
+        }
+      }
+      document.body.removeChild(textArea);
+    }
+
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+
+      let icon = 'ph-check-circle text-teal-400';
+      let borderClass = 'border-teal-500/40';
+      if (type === 'warning') {
+        icon = 'ph-warning-circle text-amber-400';
+        borderClass = 'border-amber-500/40';
+      } else if (type === 'info') {
+        icon = 'ph-info text-cyan-400';
+        borderClass = 'border-cyan-500/40';
+      }
+
+      toast.className = `flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-slate-900/95 border ${borderClass} text-white text-xs sm:text-sm font-medium shadow-2xl backdrop-blur-md transition-all duration-300 transform translate-y-2 opacity-0`;
+      toast.innerHTML = `
+        <i class="ph-fill ${icon} text-lg flex-shrink-0"></i>
+        <span>${message}</span>
+      `;
+
+      container.appendChild(toast);
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('translate-y-2', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+      }, 2400);
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+  </script>
+</body>
+</html>
